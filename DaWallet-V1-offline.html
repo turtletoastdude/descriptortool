@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bitcoin Watch-Only & PSBT Management + QR Tool (Offline)</title>
+  <style>
+    html { 
+      height: 100%; 
+      background: url("future-btc-home.jpg") no-repeat center center fixed;
+      background-size: cover;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 20px; 
+      color: orange; 
+      background: transparent; 
+    }
+    h1, h2 { color: black; text-shadow: 0 0 5px orange, 0 0 10px orange; }
+    .section { background: rgba(0,0,0,0.5); border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+    textarea, input { width:100%; padding:8px; font-size:14px; margin:5px 0; background:rgba(255,165,0,0.2); color:orange; border:1px solid orange; }
+    button { padding:8px 12px; font-size:14px; margin:5px 5px 5px 0; background:transparent; color:orange; border:1px solid orange; cursor:pointer; transition: transform 0.1s ease, background-color 0.1s ease; }
+    button:active { transform: scale(0.95); background-color: rgba(255,255,255,0.1); }
+    .qr-text, pre { background:rgba(255,165,0,0.2); color:orange; border:1px solid orange; padding:5px; box-shadow:0 0 0 1px white; white-space:pre-wrap; word-break:break-all; }
+    #genericQR img, #genericQR canvas { border: 8px solid white; border-radius: 8px; background: white; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>Bitcoin Watch-Only & PSBT Management + QR Tool</h1>
+
+  <div class="section">
+    <h2>Generic QR Code Generator</h2>
+    <textarea id="genericInput" rows="2" placeholder="Enter text here..."></textarea>
+    <button id="genGenericQR">Generate QR Code</button>
+    <div id="genericQR" style="margin-top:10px;"></div>
+    <pre id="genericQRText" class="qr-text" style="display:none;"></pre>
+  </div>
+
+  <div class="section">
+    <h2>Descriptor Management</h2>
+    <p>Paste the <code>listdescriptors</code> JSON output below (the whole thing):</p>
+    <textarea id="descriptor" rows="12" placeholder="Paste JSON here"></textarea>
+    <button id="genImport">Generate Import Commands</button>
+    <textarea id="importCmd" rows="10" readonly placeholder="Commands will appear here"></textarea>
+    <button class="copy-btn" data-target="importCmd">Copy</button>
+  </div>
+
+  <!-- Local qrcode.min.js must be present in the same folder! -->
+  <script src="qrcode.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Copy-to-clipboard utility
+      function fallbackCopy(el) {
+        el.select();
+        document.execCommand('copy');
+        alert('Copied!');
+      }
+      function copyText(id) {
+        const el = document.getElementById(id);
+        if (!el) return alert('Element not found!');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(el.value)
+            .then(() => alert('Copied!'))
+            .catch(() => fallbackCopy(el));
+        } else {
+          fallbackCopy(el);
+        }
+      }
+      document.querySelectorAll('.copy-btn').forEach(btn =>
+        btn.addEventListener('click', () => copyText(btn.getAttribute('data-target')))
+      );
+
+      // QR Code Generator
+      document.getElementById('genGenericQR').addEventListener('click', function() {
+        const t = document.getElementById('genericInput').value.trim();
+        const qrEl = document.getElementById('genericQR');
+        const txtEl = document.getElementById('genericQRText');
+        qrEl.innerHTML = '';
+        if (!t) {
+          txtEl.style.display = 'none';
+          return;
+        }
+        txtEl.style.display = 'block';
+        txtEl.textContent = t;
+        new QRCode(qrEl, { text: t, width: 250, height: 250 });
+      });
+
+      // Descriptor Management: JSON to importdescriptors commands
+      document.getElementById('genImport').addEventListener('click', function() {
+        const input = document.getElementById('descriptor').value.trim();
+        const output = document.getElementById('importCmd');
+        output.value = "";
+
+        if (!input) return alert('Paste your JSON descriptor!');
+        let data;
+        try {
+          data = JSON.parse(input);
+        } catch (e) {
+          output.value = "";
+          alert('Invalid JSON! Please paste the whole JSON object.');
+          return;
+        }
+
+        if (!Array.isArray(data.descriptors)) {
+          output.value = "";
+          alert('No \"descriptors\" array found in your JSON!');
+          return;
+        }
+
+        const cmds = data.descriptors.map(d => {
+          const singleDescArr = [d];
+          const jsonString = JSON.stringify(singleDescArr)
+            .replace(/"/g, '\\"');
+          return `importdescriptors "${jsonString}"`;
+        });
+
+        output.value = cmds.join("\n\n");
+      });
+    });
+  </script>
+</body>
+</html>
