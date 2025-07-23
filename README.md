@@ -1,4 +1,4 @@
-# 💼 DaWallet-V1-offline
+# 💼 Descriptor-Tool-offline
 
 **Offline Bitcoin Watch-Only Wallet & PSBT Management Tool with QR Code Support**
 
